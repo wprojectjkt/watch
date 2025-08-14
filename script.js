@@ -1,4 +1,4 @@
-/ Real-time Private Streaming Website with WebSocket Support
+// Real-time Private Streaming Website with WebSocket Support
 class PrivateStreamingApp {
     constructor() {
         this.token = null;
