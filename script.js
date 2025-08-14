@@ -516,15 +516,15 @@ class PrivateStreamingApp {
     }
 
     escapeHtml(text) {
-        const map = {
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            "\"": "&quot;",
-            "'": "&#039;"
-        };
-        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-    }
+    if (!text) return "";
+    const map = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
 }
 
 // Initialize the app when the DOM is fully loaded
