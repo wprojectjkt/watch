@@ -1,634 +1,555 @@
-// Real-time Private Streaming Website with WebSocket Support
-class PrivateStreamingApp {
-    constructor() {
-        this.token = null;
-        this.deviceFingerprint = null;
-        this.socket = null;
-        this.isConnected = false;
-        this.viewerCount = 0;
-        this.username = null;
-        this.hls = null; // HLS instance
-        this.heartbeatInterval = null; // keep interval id so we can clear it
-        this.originalTitle = document.title || "Private Stream";
+// Streaming Website Real-time Script with Advanced Device Fingerprinting
+(function() {
+    'use strict';
 
-        this.init();
+    // DOM Elements
+    const videoPlayer = document.getElementById('videoPlayer');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    const playButton = document.getElementById('playButton');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const viewerCountElement = document.getElementById('viewerCount');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendButton = document.getElementById('sendButton');
+    const errorModal = document.getElementById('errorModal');
+    const errorMessage = document.getElementById('errorMessage');
+    const closeErrorButton = document.getElementById('closeError');
+
+    let hls = null;
+    let socket = null;
+    let currentToken = null;
+    let currentM3uLink = null;
+    let deviceFingerprint = null;
+    let isPlaying = false;
+
+    // Function to show error modal
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorModal.style.display = 'flex';
     }
 
-    // ---------- LIFECYCLE ----------
-    init() {
-        // Quick sanity checks for required globals
-        if (typeof API_CONFIG === "undefined" || !API_CONFIG?.BOT_API_URL) {
-            console.error("API_CONFIG.BOT_API_URL is missing");
-            this.showError("Konfigurasi API tidak ditemukan. Pastikan API_CONFIG.BOT_API_URL terdefinisi.");
-            return;
-        }
-        if (typeof io === "undefined") {
-            console.warn("Socket.IO client (io) tidak terdeteksi. Pastikan <script src=\"/socket.io/socket.io.js\"> dimuat.");
-        }
-        if (typeof Hls === "undefined") {
-            console.warn("hls.js tidak terdeteksi. Untuk non-Safari, streaming HLS butuh hls.js.");
-        }
+    // Function to hide error modal
+    closeErrorButton.addEventListener('click', () => {
+        errorModal.style.display = 'none';
+    });
 
-        // Get token from URL
-        this.token = this.getTokenFromURL();
-        if (!this.token) {
-            this.showError("Token akses tidak ditemukan dalam URL.");
-            return;
-        }
-
-        // Generate device fingerprint
-        this.deviceFingerprint = this.generateDeviceFingerprint();
-
-        // Initialize UI
-        this.initializeUI();
-
-        // Validate token and start app
-        this.validateTokenAndStart();
-    }
-
-    disconnect() {
-        // Clean up resources on unload or manual call
-        try {
-            if (this.socket) {
-                this.socket.disconnect();
-                this.socket = null;
-            }
-            this.clearHeartbeat();
-            if (this.hls) {
-                try { this.hls.destroy(); } catch (_) {}
-                this.hls = null;
-            }
-        } catch (e) {
-            console.debug("disconnect cleanup error", e);
-        }
-    }
-
-    // ---------- UTILS ----------
-    getTokenFromURL() {
+    // Get token from URL
+    function getTokenFromUrl() {
         const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get("token");
+        return urlParams.get('token');
     }
 
-    generateDeviceFingerprint() {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
+    // Generate a robust device fingerprint using multiple browser attributes
+    async function getDeviceFingerprint() {
+        if (deviceFingerprint) return deviceFingerprint;
+        
         try {
-            ctx.textBaseline = "top";
-            ctx.font = "14px Arial";
-            ctx.fillText("Device fingerprint", 2, 2);
-        } catch (_) {}
-        const fingerprint = [
-            navigator.userAgent,
-            navigator.language,
-            `${screen.width}x${screen.height}`,
-            new Date().getTimezoneOffset(),
-            (canvas.toDataURL ? canvas.toDataURL() : "")
-        ].join("|");
-        return btoa(unescape(encodeURIComponent(fingerprint))).substring(0, 32);
-    }
+            // Collect multiple browser and system attributes
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillText('Device fingerprint test', 2, 2);
+            const canvasFingerprint = canvas.toDataURL();
 
-    // simple fetch with timeout helper
-    async fetchJSON(url, options = {}, timeoutMs = 10000) {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-            const res = await fetch(url, { ...options, signal: controller.signal });
-            const text = await res.text();
-            let json;
-            try { json = text ? JSON.parse(text) : {}; } catch (e) { throw new Error("Respon bukan JSON valid"); }
-            if (!res.ok) {
-                const msg = json?.error || `HTTP ${res.status}`;
-                throw new Error(msg);
-            }
-            return json;
-        } finally {
-            clearTimeout(id);
-        }
-    }
-
-    // ---------- UI ----------
-    initializeUI() {
-        // Set username from localStorage or generate random
-        this.username = localStorage.getItem("streaming_username") || this.generateUsername();
-        localStorage.setItem("streaming_username", this.username);
-
-        // Initialize viewer count display
-        this.updateViewerCount(0);
-
-        // Initialize chat
-        this.initializeChat();
-
-        // Add event listeners
-        this.addEventListeners();
-
-        // Close error modal
-        const closeBtn = document.getElementById("closeError");
-        if (closeBtn) {
-            closeBtn.addEventListener("click", () => {
-                this.hideError();
-            });
-        }
-
-        // Play button
-        const playButton = document.getElementById("playButton");
-        if (playButton) {
-            playButton.addEventListener("click", async () => {
-                const video = document.getElementById("videoPlayer");
-                if (video) {
-                    try { await video.play(); } catch (e) { console.debug("manual play failed", e); }
-                    this.updatePlayButton(false);
+            // WebGL fingerprint
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            let webglFingerprint = '';
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) {
+                    webglFingerprint = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) + 
+                                     gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
                 }
-            });
-        }
-    }
-
-    generateUsername() {
-        const adjectives = ["Cool", "Smart", "Fast", "Bright", "Happy", "Lucky", "Strong", "Wise"];
-        const nouns = ["Viewer", "User", "Guest", "Friend", "Fan", "Watcher"];
-        const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-        const noun = nouns[Math.floor(Math.random() * nouns.length)];
-        const num = Math.floor(Math.random() * 1000);
-        return `${adj}${noun}${num}`;
-    }
-
-    initializeChat() {
-        const chatInput = document.getElementById("chatInput");
-        const sendButton = document.getElementById("sendButton");
-
-        if (chatInput && sendButton) {
-            chatInput.addEventListener("keypress", (e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    this.sendMessage();
-                }
-            });
-
-            sendButton.addEventListener("click", () => {
-                this.sendMessage();
-            });
-        }
-
-        // Add system message
-        this.addChatMessage("System", "Selamat datang di live streaming!", true);
-    }
-
-    addEventListeners() {
-        // Handle page visibility change
-        document.addEventListener("visibilitychange", () => {
-            if (document.hidden) {
-                this.handlePageHidden();
-            } else {
-                this.handlePageVisible();
             }
-        });
 
-        // Handle page unload
-        window.addEventListener("beforeunload", () => {
-            this.disconnect();
-        });
-
-        // Handle connection errors
-        window.addEventListener("online", () => {
-            this.handleConnectionRestored();
-        });
-
-        window.addEventListener("offline", () => {
-            this.handleConnectionLost();
-        });
-    }
-
-    // ---------- AUTH & STREAM ----------
-    async validateTokenAndStart() {
-        try {
-            this.showLoadingOverlay("Memvalidasi token akses...");
-
-            const result = await this.fetchJSON(`${API_CONFIG.BOT_API_URL}/validate-token`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    token: this.token,
-                    device_fingerprint: this.deviceFingerprint
-                })
-            });
-
-            if (result.valid) {
-                // Fire and forget; server sebaiknya membaca IP dari request, bukan dari client
-                this.markTokenUsed().catch(() => {});
-                await this.loadStream();
-                this.connectWebSocket();
-            } else {
-                this.showError(result.error || "Token tidak valid.");
-            }
-        } catch (error) {
-            console.error("Token validation error:", error);
-            this.showError(error.message || "Kesalahan jaringan. Periksa koneksi internet Anda.");
-        }
-    }
-
-    async markTokenUsed() {
-        try {
-            await this.fetchJSON(`${API_CONFIG.BOT_API_URL}/mark-token-used`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    token: this.token,
-                    device_fingerprint: this.deviceFingerprint
-                    // ip_address: diisi di server dari IP request
-                })
-            });
-        } catch (error) {
-            console.warn("Mark token used warning:", error?.message || error);
-        }
-    }
-
-    async loadStream() {
-        try {
-            this.showLoadingOverlay("Memuat stream...");
-
-            const result = await this.fetchJSON(`${API_CONFIG.BOT_API_URL}/get-m3u-links`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    token: this.token,
-                    device_fingerprint: this.deviceFingerprint
-                })
-            });
-
-            if (result.success && result.links && result.links.length > 0) {
-                const streamUrl = result.links[0].url;
-                this.initializeVideoPlayer(streamUrl);
-            } else {
-                this.showError(result.error || "Tidak ada stream yang tersedia.");
-            }
-        } catch (error) {
-            console.error("Load stream error:", error);
-            this.showError(error.message || "Gagal memuat stream.");
-        }
-    }
-
-    initializeVideoPlayer(streamUrl) {
-        const video = document.getElementById("videoPlayer");
-        if (!video) {
-            this.showError("Video player tidak ditemukan.");
-            return;
-        }
-
-        // clean previous instance if any
-        if (this.hls) {
-            try { this.hls.destroy(); } catch (_) {}
-            this.hls = null;
-        }
-
-        const tryAutoplay = async () => {
+            // Audio context fingerprint
+            let audioFingerprint = '';
             try {
-                await video.play();
-                this.updatePlayButton(false);
-            } catch (error) {
-                console.log("Auto-play prevented:", error);
-                this.showPlayButton();
-            }
-        };
-
-        if (window.Hls && Hls.isSupported()) {
-            this.hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: true,
-                backBufferLength: 90
-            });
-
-            this.hls.loadSource(streamUrl);
-            this.hls.attachMedia(video);
-
-            this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                console.log("HLS stream loaded successfully");
-            });
-
-            this.hls.on(Hls.Events.ERROR, (event, data) => {
-                console.error("HLS error:", data);
-                if (data.fatal) {
-                    this.showError("Stream error: " + data.details);
-                }
-            });
-
-            video.addEventListener("playing", () => {
-                console.log("Video is playing, hiding overlay.");
-                this.hideLoadingOverlay();
-                this.setupVideoEvents(video);
-            }, { once: true });
-
-            tryAutoplay();
-        } else if (video.canPlayType && video.canPlayType("application/vnd.apple.mpegurl")) {
-            // Native HLS support (Safari)
-            video.src = streamUrl;
-
-            video.addEventListener("loadedmetadata", () => {
-                console.log("Native HLS stream loaded successfully");
-            }, { once: true });
-
-            video.addEventListener("playing", () => {
-                console.log("Native video is playing, hiding overlay.");
-                this.hideLoadingOverlay();
-                this.setupVideoEvents(video);
-            }, { once: true });
-
-            tryAutoplay();
-        } else {
-            this.showError("Browser Anda tidak mendukung HLS streaming.");
-        }
-    }
-
-    setupVideoEvents(video) {
-        // Disable seeking for live streams
-        const onSeeking = (e) => {
-            const dur = video.duration;
-            // If duration is finite and > 0, treat as VOD; else it's live.
-            const isVOD = Number.isFinite(dur) && dur > 0;
-            if (!isVOD) {
-                // Live: prevent seeking; jump to live edge if possible
-                e.preventDefault?.();
-                try {
-                    if (this.hls && typeof this.hls.liveSyncPosition === "number") {
-                        video.currentTime = this.hls.liveSyncPosition;
-                    } else {
-                        // Fallback: simply resume playing (browser keeps live edge)
-                        const ct = video.seekable?.end?.(0);
-                        if (typeof ct === "number") video.currentTime = ct;
-                    }
-                } catch (_) {}
-            } else {
-                // VOD: allow seeking but keep within last 30 seconds guard if desired
-                if (dur - video.currentTime > 30) {
-                    // optional: allow full seeking -> comment out next 2 lines if not needed
-                    // e.preventDefault?.();
-                    // video.currentTime = Math.max(0, dur - 1);
-                }
-            }
-        };
-        video.removeEventListener("seeking", onSeeking); // ensure single binding
-        video.addEventListener("seeking", onSeeking);
-
-        // Handle play/pause
-        video.addEventListener("play", () => this.updatePlayButton(false));
-        video.addEventListener("pause", () => this.updatePlayButton(true));
-    }
-
-    // ---------- WEBSOCKET ----------
-    connectWebSocket() {
-        try {
-            if (!window.io) {
-                console.error("Socket.IO client tidak ditemukan");
-                return;
-            }
-            // Guard: close existing
-            if (this.socket) {
-                try { this.socket.disconnect(); } catch (_) {}
-                this.socket = null;
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const analyser = audioContext.createAnalyser();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(10000, audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                oscillator.connect(analyser);
+                analyser.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start(0);
+                
+                const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(frequencyData);
+                audioFingerprint = Array.from(frequencyData).slice(0, 30).join(',');
+                
+                oscillator.stop();
+                audioContext.close();
+            } catch (e) {
+                audioFingerprint = 'audio_unavailable';
             }
 
-            this.socket = io(API_CONFIG.BOT_API_URL, {
-                transports: ["websocket", "polling"],
-                timeout: 10000,
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000
-            });
+            // Collect comprehensive device attributes
+            const attributes = [
+                navigator.userAgent,
+                navigator.language,
+                navigator.languages ? navigator.languages.join(',') : '',
+                navigator.platform,
+                navigator.cookieEnabled,
+                navigator.doNotTrack,
+                navigator.hardwareConcurrency || 0,
+                navigator.maxTouchPoints || 0,
+                screen.width,
+                screen.height,
+                screen.colorDepth,
+                screen.pixelDepth,
+                new Date().getTimezoneOffset(),
+                window.devicePixelRatio || 1,
+                navigator.connection ? navigator.connection.effectiveType : '',
+                canvasFingerprint.slice(-50), // Last 50 chars of canvas fingerprint
+                webglFingerprint,
+                audioFingerprint,
+                // Font detection
+                document.fonts ? document.fonts.size : 0,
+                // Local storage availability
+                typeof(Storage) !== "undefined" ? 'storage_available' : 'no_storage',
+                // Session storage availability  
+                typeof(sessionStorage) !== "undefined" ? 'session_available' : 'no_session',
+                // IndexedDB availability
+                typeof(indexedDB) !== "undefined" ? 'indexeddb_available' : 'no_indexeddb'
+            ];
 
-            this.socket.on("connect", () => {
-                console.log("WebSocket connected");
-                this.isConnected = true;
-                this.updateConnectionStatus(true);
-
-                // Join stream
-                this.socket.emit("join_stream", {
-                    token: this.token,
-                    device_fingerprint: this.deviceFingerprint
-                });
-            });
-
-            this.socket.on("disconnect", () => {
-                console.log("WebSocket disconnected");
-                this.isConnected = false;
-                this.updateConnectionStatus(false);
-                this.clearHeartbeat();
-            });
-
-            this.socket.on("joined_stream", (data) => {
-                console.log("Joined stream:", data);
-                this.addChatMessage("System", `Anda bergabung dengan ${data?.viewer_count ?? 0} penonton lainnya.`, true);
-                this.startHeartbeat();
-            });
-
-            this.socket.on("viewer_count_update", (data) => {
-                this.updateViewerCount(Number(data?.count ?? 0));
-            });
-
-            this.socket.on("new_message", (data) => {
-                this.addChatMessage(String(data?.username || "Anon"), String(data?.message || ""), false, data?.timestamp);
-            });
-
-            this.socket.on("error", (data) => {
-                console.error("WebSocket error:", data);
-                this.addChatMessage("System", `Error: ${data?.message || data}`, true);
-            });
-
-            this.socket.on("connect_error", (error) => {
-                console.error("WebSocket connection error:", error);
-                this.updateConnectionStatus(false);
-            });
+            // Create hash from all attributes
+            const fingerprint = await hashString(attributes.join('|'));
+            deviceFingerprint = fingerprint;
+            
+            console.log('Generated device fingerprint:', fingerprint.substring(0, 16) + '...');
+            return deviceFingerprint;
+            
         } catch (error) {
-            console.error("WebSocket initialization error:", error);
-            this.updateConnectionStatus(false);
+            console.error('Error generating device fingerprint:', error);
+            // Fallback to basic fingerprint
+            const fallback = navigator.userAgent + navigator.language + screen.width + screen.height + new Date().getTimezoneOffset();
+            deviceFingerprint = await hashString(fallback);
+            return deviceFingerprint;
         }
     }
 
-    startHeartbeat() {
-        this.clearHeartbeat();
-        this.heartbeatInterval = setInterval(() => {
-            if (this.socket && this.isConnected) {
-                this.socket.emit("heartbeat");
-            }
-        }, 15000);
+    // Simple hash function for creating fingerprint
+    async function hashString(str) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(str);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    clearHeartbeat() {
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-            this.heartbeatInterval = null;
-        }
+    // Show loading overlay
+    function showLoading(text = 'Memuat Stream...') {
+        loadingText.textContent = text;
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.style.opacity = '1';
+        loadingOverlay.style.visibility = 'visible';
     }
 
-    sendMessage() {
-        const chatInput = document.getElementById("chatInput");
-        if (!chatInput || !this.socket || !this.isConnected) return;
+    // Hide loading overlay
+    function hideLoading() {
+        loadingOverlay.style.opacity = '0';
+        loadingOverlay.style.visibility = 'hidden';
+        loadingOverlay.classList.add('hidden');
+    }
 
-        const message = chatInput.value.trim();
-        if (!message) return;
-
-        if (message.length > 200) {
-            this.showError("Pesan terlalu panjang (maksimal 200 karakter).");
-            return;
+    // Initialize HLS player
+    function initHlsPlayer(m3uLink) {
+        if (hls) {
+            hls.destroy();
         }
+        hls = new Hls();
+        hls.loadSource(m3uLink);
+        hls.attachMedia(videoPlayer);
 
-        this.socket.emit("send_message", {
-            username: this.username,
-            message: message
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            console.log('HLS Manifest parsed. Video ready to play.');
+            // Auto-play if possible
+            videoPlayer.play().catch(error => {
+                console.log('Auto-play prevented:', error);
+                playButton.style.display = 'flex';
+                hideLoading();
+            });
         });
 
-        chatInput.value = "";
+        hls.on(Hls.Events.ERROR, function(event, data) {
+            console.error('HLS Error:', data);
+            if (data.fatal) {
+                switch(data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        showError('Kesalahan jaringan. Periksa koneksi internet Anda.');
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        showError('Kesalahan media. Format stream tidak didukung.');
+                        break;
+                    default:
+                        showError('Terjadi kesalahan saat memuat stream.');
+                        break;
+                }
+                hideLoading();
+            }
+        });
     }
 
-    addChatMessage(username, message, isSystem = false, timestamp = null) {
-        const chatMessages = document.getElementById("chatMessages");
+    // Validate token with device fingerprint
+    async function validateToken(token) {
+        try {
+            const fingerprint = await getDeviceFingerprint();
+            const response = await fetch(`${API_CONFIG.BOT_API_URL}/validate-token`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    token: token,
+                    device_fingerprint: fingerprint
+                })
+            });
+
+            const data = await response.json();
+            console.log('Token validation response:', data);
+            
+            if (!data.valid) {
+                throw new Error(data.message || 'Token tidak valid');
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('Token validation error:', error);
+            throw error;
+        }
+    }
+
+    // Mark token as used
+    async function markTokenUsed(token) {
+        try {
+            const fingerprint = await getDeviceFingerprint();
+            const response = await fetch(`${API_CONFIG.BOT_API_URL}/mark-token-used`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    token: token,
+                    device_fingerprint: fingerprint
+                })
+            });
+
+            const data = await response.json();
+            console.log('Mark token used response:', data);
+            
+            if (!data.success) {
+                throw new Error(data.message || 'Gagal menandai token sebagai digunakan');
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('Mark token used error:', error);
+            throw error;
+        }
+    }
+
+    // Get M3U links
+    async function getM3uLinks() {
+        try {
+            const response = await fetch(`${API_CONFIG.BOT_API_URL}/get-m3u-links`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const data = await response.json();
+            console.log('M3U links response:', data);
+            
+            if (!data.success || !data.links || data.links.length === 0) {
+                throw new Error('Tidak ada stream yang tersedia');
+            }
+            
+            return data.links;
+        } catch (error) {
+            console.error('Get M3U links error:', error);
+            throw error;
+        }
+    }
+
+    // Try to load stream with failover
+    async function loadStreamWithFailover(links) {
+        for (let i = 0; i < links.length; i++) {
+            const link = links[i];
+            console.log(`Trying stream ${i + 1}/${links.length}: ${link.name}`);
+            
+            try {
+                showLoading(`Memuat ${link.name}...`);
+                
+                // Test if the link is accessible
+                const testResponse = await fetch(link.url, { 
+                    method: 'HEAD',
+                    mode: 'no-cors'
+                });
+                
+                // Initialize HLS player with this link
+                initHlsPlayer(link.url);
+                currentM3uLink = link.url;
+                
+                // Wait for video to start playing
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        reject(new Error('Timeout loading stream'));
+                    }, 10000);
+                    
+                    videoPlayer.addEventListener('playing', () => {
+                        clearTimeout(timeout);
+                        resolve();
+                    }, { once: true });
+                    
+                    videoPlayer.addEventListener('error', () => {
+                        clearTimeout(timeout);
+                        reject(new Error('Video error'));
+                    }, { once: true });
+                });
+                
+                console.log(`Successfully loaded stream: ${link.name}`);
+                hideLoading();
+                return;
+                
+            } catch (error) {
+                console.error(`Failed to load stream ${link.name}:`, error);
+                if (i === links.length - 1) {
+                    // Last link failed
+                    throw new Error('Semua stream gagal dimuat');
+                }
+                // Try next link
+                continue;
+            }
+        }
+    }
+
+    // Initialize Socket.IO connection
+    function initSocket() {
+        if (socket) {
+            socket.disconnect();
+        }
+
+        socket = io(API_CONFIG.BOT_API_URL, {
+            transports: ['websocket', 'polling']
+        });
+
+        socket.on('connect', () => {
+            console.log('Socket connected');
+            updateConnectionStatus('connected');
+            
+            // Join stream room
+            socket.emit('join_stream', {
+                token: currentToken
+            });
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Socket disconnected');
+            updateConnectionStatus('disconnected');
+        });
+
+        socket.on('viewer_count', (data) => {
+            updateViewerCount(data.count);
+        });
+
+        socket.on('new_message', (data) => {
+            addChatMessage(data.username, data.message, data.timestamp);
+        });
+
+        socket.on('error', (error) => {
+            console.error('Socket error:', error);
+            showError('Koneksi real-time terputus');
+        });
+
+        // Send heartbeat every 30 seconds
+        setInterval(() => {
+            if (socket && socket.connected) {
+                socket.emit('heartbeat', {
+                    token: currentToken,
+                    timestamp: Date.now()
+                });
+            }
+        }, 30000);
+    }
+
+    // Update connection status
+    function updateConnectionStatus(status) {
+        if (connectionStatus) {
+            connectionStatus.textContent = status === 'connected' ? 'Terhubung' : 'Terputus';
+            connectionStatus.className = `connection-status ${status}`;
+        }
+    }
+
+    // Update viewer count
+    function updateViewerCount(count) {
+        if (viewerCountElement) {
+            viewerCountElement.textContent = count;
+        }
+    }
+
+    // Add chat message
+    function addChatMessage(username, message, timestamp) {
         if (!chatMessages) return;
 
-        const messageElement = document.createElement("div");
-        messageElement.className = `chat-message ${isSystem ? "system-message" : ""}`;
-
-        const timeStr = timestamp || new Date().toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit"
+        const messageElement = document.createElement('div');
+        messageElement.className = 'chat-message';
+        
+        const time = new Date(timestamp).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit'
         });
-
-        if (isSystem) {
-            messageElement.innerHTML = `
-                <div class="message-content system">
-                    <span class="message-text">${this.escapeHtml(String(message))}</span>
-                    <span class="message-time">${this.escapeHtml(String(timeStr))}</span>
-                </div>
-            `;
-        } else {
-            const isOwnMessage = username === this.username;
-            messageElement.innerHTML = `
-                <div class="message-content ${isOwnMessage ? "own-message" : ""}">
-                    <div class="message-header">
-                        <span class="username">${this.escapeHtml(String(username))}</span>
-                        <span class="message-time">${this.escapeHtml(String(timeStr))}</span>
-                    </div>
-                    <div class="message-text">${this.escapeHtml(String(message))}</div>
-                </div>
-            `;
-        }
-
+        
+        // Escape HTML to prevent XSS
+        const escapedUsername = escapeHtml(username);
+        const escapedMessage = escapeHtml(message);
+        
+        messageElement.innerHTML = `
+            <div class="message-header">
+                <span class="username">${escapedUsername}</span>
+                <span class="timestamp">${time}</span>
+            </div>
+            <div class="message-content">${escapedMessage}</div>
+        `;
+        
         chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
 
-        // Remove old messages if too many
-        while (chatMessages.children.length > 100) {
-            chatMessages.removeChild(chatMessages.firstChild);
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Send chat message
+    function sendChatMessage() {
+        if (!chatInput || !socket || !socket.connected) return;
+        
+        const message = chatInput.value.trim();
+        if (!message) return;
+        
+        socket.emit('send_message', {
+            token: currentToken,
+            message: message,
+            timestamp: Date.now()
+        });
+        
+        chatInput.value = '';
+    }
+
+    // Event listeners
+    if (playButton) {
+        playButton.addEventListener('click', () => {
+            videoPlayer.play().then(() => {
+                playButton.style.display = 'none';
+                isPlaying = true;
+            }).catch(error => {
+                console.error('Play error:', error);
+                showError('Gagal memutar video');
+            });
+        });
+    }
+
+    if (sendButton) {
+        sendButton.addEventListener('click', sendChatMessage);
+    }
+
+    if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+    }
+
+    // Video event listeners
+    videoPlayer.addEventListener('playing', () => {
+        console.log('Video started playing');
+        hideLoading();
+        playButton.style.display = 'none';
+        isPlaying = true;
+    });
+
+    videoPlayer.addEventListener('pause', () => {
+        isPlaying = false;
+    });
+
+    videoPlayer.addEventListener('error', (e) => {
+        console.error('Video error:', e);
+        hideLoading();
+        showError('Terjadi kesalahan saat memutar video');
+    });
+
+    // Main initialization function
+    async function initializeApp() {
+        try {
+            showLoading('Memvalidasi akses...');
+            
+            // Get token from URL
+            currentToken = getTokenFromUrl();
+            if (!currentToken) {
+                throw new Error('Token tidak ditemukan dalam URL');
+            }
+
+            console.log('Initializing with token:', currentToken.substring(0, 8) + '...');
+
+            // Validate token
+            const validationResult = await validateToken(currentToken);
+            console.log('Token validation successful');
+
+            // Mark token as used
+            await markTokenUsed(currentToken);
+            console.log('Token marked as used');
+
+            // Get M3U links
+            showLoading('Mengambil daftar stream...');
+            const m3uLinks = await getM3uLinks();
+            console.log('M3U links retrieved:', m3uLinks.length);
+
+            // Load stream with failover
+            await loadStreamWithFailover(m3uLinks);
+            console.log('Stream loaded successfully');
+
+            // Initialize Socket.IO for real-time features
+            initSocket();
+            
+        } catch (error) {
+            console.error('Initialization error:', error);
+            hideLoading();
+            showError(error.message || 'Gagal menginisialisasi aplikasi');
         }
     }
 
-    updateViewerCount(count) {
-        this.viewerCount = count;
-        const viewerCountElement = document.getElementById("viewerCount");
-        if (viewerCountElement) {
-            viewerCountElement.textContent = String(count);
+    // Start the application when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    } else {
+        initializeApp();
+    }
+
+    // Expose some functions globally for debugging
+    window.streamingApp = {
+        getDeviceFingerprint,
+        validateToken,
+        markTokenUsed,
+        getM3uLinks,
+        updateViewerCount,
+        disconnect: () => {
+            if (socket) socket.disconnect();
+            if (hls) hls.destroy();
         }
-        // Update page title
-        document.title = `${this.originalTitle} (${count} penonton)`;
-    }
+    };
 
-    updateConnectionStatus(connected) {
-        const statusElement = document.getElementById("connectionStatus");
-        if (statusElement) {
-            statusElement.className = `connection-status ${connected ? "connected" : "disconnected"}`;
-            statusElement.textContent = connected ? "Terhubung" : "Terputus";
-        }
-    }
-
-    updatePlayButton(show) {
-        const playButton = document.getElementById("playButton");
-        if (playButton) {
-            playButton.style.display = show ? "block" : "none";
-        }
-    }
-
-    showPlayButton() {
-        this.updatePlayButton(true);
-    }
-
-    showLoadingOverlay(message) {
-        const overlay = document.getElementById("loadingOverlay");
-        const loadingText = document.getElementById("loadingText");
-
-        if (overlay && loadingText) {
-            loadingText.textContent = message;
-            overlay.style.display = "flex";
-        }
-    }
-
-    hideLoadingOverlay() {
-        const overlay = document.getElementById("loadingOverlay");
-        if (overlay) {
-            overlay.style.display = "none";
-        }
-    }
-
-    showError(message) {
-        const modal = document.getElementById("errorModal");
-        const errorMessage = document.getElementById("errorMessage");
-
-        if (modal && errorMessage) {
-            errorMessage.textContent = message;
-            modal.classList.add("show"); // Use class for showing modal
-        } else {
-            alert(message);
-        }
-    }
-
-    hideError() {
-        const modal = document.getElementById("errorModal");
-        if (modal) {
-            modal.classList.remove("show"); // Use class for hiding modal
-        }
-    }
-
-    handlePageHidden() {
-        // Reduce heartbeat frequency when page is hidden
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-            this.heartbeatInterval = setInterval(() => {
-                if (this.socket && this.isConnected) {
-                    this.socket.emit("heartbeat");
-                }
-            }, 30000); // 30 seconds when hidden
-        }
-    }
-
-    handlePageVisible() {
-        // Restore heartbeat frequency when page is visible
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-            this.startHeartbeat(); // Restart with original frequency
-        }
-    }
-
-    handleConnectionRestored() {
-        this.addChatMessage("System", "Koneksi internet kembali tersambung.", true);
-        if (!this.isConnected) {
-            this.connectWebSocket();
-        }
-    }
-
-    handleConnectionLost() {
-        this.addChatMessage("System", "Koneksi internet terputus.", true);
-        this.updateConnectionStatus(false);
-    }
-
-    escapeHtml(text) {
-        if (!text) return "";
-        const map = {
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&quot;",
-            "'": "&#039;"
-        };
-        return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
-    }
-}
-
-// Initialize the app when the DOM is fully loaded
-document.addEventListener("DOMContentLoaded", () => {
-    window.streamingApp = new PrivateStreamingApp();
-});
+})();
