@@ -3,196 +3,293 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weekend Project - Live Streaming Platform</title>
+    <title>Private Stream - Live Streaming Platform</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- HLS.js for video streaming -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.10/dist/hls.min.js"></script>
+    
+    <!-- Socket.IO for real-time communication -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <!-- API Configuration -->
+    <script src="api.js"></script>
+    
+    <style>
+        /* Additional styles for real-time features */
+        .viewer-stats {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .stat-icon {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .connection-status {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .connection-status.connected {
+            background: #10b981;
+            color: white;
+        }
+        
+        .connection-status.disconnected {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .chat-message {
+            margin-bottom: 12px;
+            animation: slideInUp 0.3s ease-out;
+        }
+        
+        .chat-message.system-message .message-content {
+            background: rgba(59, 130, 246, 0.2);
+            border-left: 3px solid #3b82f6;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-style: italic;
+        }
+        
+        .message-content {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 12px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .message-content.own-message {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            margin-left: 20px;
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        
+        .username {
+            font-weight: 600;
+            color: #10b981;
+            font-size: 0.9rem;
+        }
+        
+        .message-time {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .message-text {
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        
+        .system-message .message-text {
+            color: #93c5fd;
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .live-indicator {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+        
+        .play-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: rgba(16, 185, 129, 0.9);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            display: none;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        
+        .play-button:hover {
+            background: rgba(16, 185, 129, 1);
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .viewer-stats {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .stat-item {
+                padding: 4px 8px;
+                font-size: 0.8rem;
+            }
+            
+            .message-content.own-message {
+                margin-left: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div id="loading-screen" class="loading-screen">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <h2>Memuat Private Stream</h2>
-            <p>Memverifikasi akses Anda...</p>
-        </div>
-    </div>
-
-    <!-- Main Container -->
-    <div id="main-container" class="main-container hidden">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <div class="logo">
-                    <i class="fas fa-play-circle"></i>
-                    <span>Weekend Project</span>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-play-circle"></i>
+                <span>Private Stream</span>
+            </div>
+            <div class="header-right">
+                <div class="live-badge live-indicator">
+                    <i class="fas fa-circle"></i>
+                    LIVE
                 </div>
-                <div class="header-info">
-                    <div class="live-indicator">
-                        <span class="live-dot"></span>
-                        <span>LIVE</span>
+                <div id="connectionStatus" class="connection-status disconnected">
+                    Menghubungkan...
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Video Section -->
+        <section class="video-section">
+            <div class="video-container">
+                <video id="videoPlayer" class="video-player" controls playsinline muted>
+                    Browser Anda tidak mendukung video HTML5.
+                </video>
+                
+                <!-- Play Button Overlay -->
+                <button id="playButton" class="play-button">
+                    <i class="fas fa-play"></i>
+                </button>
+                
+                <!-- Loading Overlay -->
+                <div id="loadingOverlay" class="video-overlay">
+                    <div class="loading-spinner"></div>
+                    <div id="loadingText" class="loading-text">Memuat Stream...</div>
+                </div>
+            </div>
+            
+            <!-- Stream Info -->
+            <div class="stream-info">
+                <h2 class="stream-title">Live Streaming Session</h2>
+                <p class="stream-description">Streaming pribadi dengan akses terbatas</p>
+                
+                <!-- Real-time Stats -->
+                <div class="viewer-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-users stat-icon"></i>
+                        <span id="viewerCount">0</span>
+                        <span>Penonton</span>
                     </div>
-                    <div class="connection-status" id="connection-status">
-                        <i class="fas fa-wifi"></i>
-                        <span>Terhubung</span>
+                    <div class="stat-item">
+                        <i class="fas fa-signal stat-icon"></i>
+                        <span>HD</span>
+                        <span>Kualitas</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-clock stat-icon"></i>
+                        <span id="streamDuration">00:00</span>
+                        <span>Durasi</span>
                     </div>
                 </div>
             </div>
-        </header>
+        </section>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Video Section -->
-            <section class="video-section">
-                <div class="video-container">
-                    <!-- Video Player -->
-                    <div class="video-wrapper">
-                        <video 
-                            id="video-player" 
-                            class="video-player"
-                            controls
-                            playsinline
-                            muted
-                        ></video>
-                        
-                        <!-- Video Overlay -->
-                        <div id="video-overlay" class="video-overlay">
-                            <div class="overlay-content">
-                                <div class="loading-spinner-video"></div>
-                                <h3>Memuat Stream...</h3>
-                                <p>Menghubungkan ke server streaming</p>
-                            </div>
-                        </div>
-
-                        <!-- Custom Controls -->
-                        <div class="custom-controls">
-                            <div class="controls-left">
-                                <button id="play-pause-btn" class="control-btn">
-                                    <i class="fas fa-play"></i>
-                                </button>
-                                <button id="mute-btn" class="control-btn">
-                                    <i class="fas fa-volume-up"></i>
-                                </button>
-                                <div class="volume-container">
-                                    <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="70">
-                                </div>
-                                <div class="time-display">
-                                    <span id="current-time">00:00</span>
-                                    <span>/</span>
-                                    <span id="duration">LIVE</span>
-                                </div>
-                            </div>
-                            <div class="controls-right">
-                                <select id="quality-select" class="quality-select">
-                                    <option value="-1">Auto</option>
-                                </select>
-                                <button id="fullscreen-btn" class="control-btn">
-                                    <i class="fas fa-expand"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Stream Info -->
-                    <div class="stream-info">
-                        <div class="stream-title">
-                            <h2 id="stream-title">Live Streaming Session</h2>
-                            <p id="stream-description">Streaming pribadi dengan akses terbatas</p>
-                        </div>
-                        <div class="stream-stats">
-                            <div class="stat-item">
-                                <i class="fas fa-users"></i>
-                                <span id="viewer-count">1</span>
-                                <small>Penonton</small>
-                            </div>
-                            <div class="stat-item">
-                                <i class="fas fa-signal"></i>
-                                <span id="stream-quality">HD</span>
-                                <small>Kualitas</small>
-                            </div>
-                            <div class="stat-item">
-                                <i class="fas fa-clock"></i>
-                                <span id="stream-duration">00:00</span>
-                                <small>Durasi</small>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Chat Section -->
+        <section class="chat-section">
+            <div class="chat-header">
+                <h3><i class="fas fa-comments"></i> Live Chat</h3>
+                <div class="chat-status">
+                    <i class="fas fa-circle online-indicator"></i>
+                    <span id="chatUserCount">0</span> online
                 </div>
-            </section>
-
-            <!-- Chat Section -->
-            <section class="chat-section">
-                <div class="chat-container">
-                    <div class="chat-header">
-                        <h3>
-                            <i class="fas fa-comments"></i>
-                            Live Chat
-                        </h3>
-                        <div class="chat-controls">
-                            <button id="chat-toggle" class="chat-control-btn">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button id="chat-settings" class="chat-control-btn">
-                                <i class="fas fa-cog"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="chat-messages" id="chat-messages">
-                        <!-- Chat messages will be added here -->
-                    </div>
-                    
-                    <div class="chat-input-container">
-                        <div class="chat-input-wrapper">
-                            <input 
-                                type="text" 
-                                id="chat-input" 
-                                class="chat-input" 
-                                placeholder="Ketik pesan Anda..."
-                                maxlength="200"
-                            >
-                            <button id="send-btn" class="send-btn">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </div>
-                        <div class="chat-info">
-                            <small>Tekan Enter untuk mengirim • Maksimal 200 karakter</small>
-                        </div>
-                    </div>
+            </div>
+            
+            <div id="chatMessages" class="chat-messages">
+                <!-- Messages will be added here dynamically -->
+            </div>
+            
+            <div class="chat-input-container">
+                <input 
+                    type="text" 
+                    id="chatInput" 
+                    class="chat-input" 
+                    placeholder="Ketik pesan Anda..."
+                    maxlength="200"
+                >
+                <button id="sendButton" class="send-button">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+                <div class="input-hint">
+                    Tekan Enter untuk mengirim • Maksimal 200 karakter
                 </div>
-            </section>
-        </main>
-    </div>
+            </div>
+        </section>
+    </main>
 
     <!-- Error Modal -->
-    <div id="error-modal" class="modal">
-        <div class="modal-content error-modal">
+    <div id="errorModal" class="modal">
+        <div class="modal-content">
             <div class="modal-header">
                 <i class="fas fa-exclamation-triangle"></i>
                 <h3>Terjadi Kesalahan</h3>
             </div>
             <div class="modal-body">
-                <p id="error-message">Pesan error akan ditampilkan di sini.</p>
+                <p id="errorMessage">Pesan error akan ditampilkan di sini.</p>
             </div>
             <div class="modal-footer">
-                <button id="close-error" class="btn btn-primary">Tutup</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Success Modal -->
-    <div id="success-modal" class="modal">
-        <div class="modal-content success-modal">
-            <div class="modal-header">
-                <i class="fas fa-check-circle"></i>
-                <h3>Berhasil</h3>
-            </div>
-            <div class="modal-body">
-                <p id="success-message">Pesan sukses akan ditampilkan di sini.</p>
-            </div>
-            <div class="modal-footer">
-                <button id="close-success" class="btn btn-primary">Tutup</button>
+                <button id="closeError" class="btn btn-primary">Tutup</button>
             </div>
         </div>
     </div>
@@ -202,15 +299,54 @@
         <div class="footer-content">
             <p>&copy; 2025 Private Streaming Platform. All rights reserved.</p>
             <div class="footer-links">
-                <a href="#" onclick="showInfo()">Info</a>
-                <a href="#" onclick="showSupport()">Support</a>
+                <a href="#" onclick="window.streamingApp?.disconnect(); window.location.reload();">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </a>
+                <a href="#" onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();">
+                    <i class="fas fa-expand"></i> Fullscreen
+                </a>
             </div>
         </div>
     </footer>
 
     <!-- Scripts -->
-    <script src="api.js"></script>
-    <script src="script.js"></script>
+    <script src="script_realtime.js"></script>
+    
+    <script>
+        // Update stream duration
+        function updateStreamDuration() {
+            const durationElement = document.getElementById('streamDuration');
+            if (durationElement) {
+                const video = document.getElementById('videoPlayer');
+                if (video && !isNaN(video.currentTime)) {
+                    const minutes = Math.floor(video.currentTime / 60);
+                    const seconds = Math.floor(video.currentTime % 60);
+                    durationElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            }
+        }
+        
+        // Update duration every second
+        setInterval(updateStreamDuration, 1000);
+        
+        // Update chat user count with viewer count
+        function updateChatUserCount(count) {
+            const chatUserCountElement = document.getElementById('chatUserCount');
+            if (chatUserCountElement) {
+                chatUserCountElement.textContent = count;
+            }
+        }
+        
+        // Listen for viewer count updates
+        document.addEventListener('DOMContentLoaded', () => {
+            const originalUpdateViewerCount = window.streamingApp?.updateViewerCount;
+            if (originalUpdateViewerCount) {
+                window.streamingApp.updateViewerCount = function(count) {
+                    originalUpdateViewerCount.call(this, count);
+                    updateChatUserCount(count);
+                };
+            }
+        });
+    </script>
 </body>
 </html>
-
