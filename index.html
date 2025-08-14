@@ -17,10 +17,10 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     
     <!-- API Configuration -->
-    
+    <script src="api.js"></script>
     
     <style>
-        /* Additional styles for real-time features */
+        /* Additional styles for enhanced features */
         .viewer-stats {
             display: flex;
             align-items: center;
@@ -60,121 +60,54 @@
             color: white;
         }
         
-        .chat-message {
-            margin-bottom: 12px;
-            animation: slideInUp 0.3s ease-out;
-        }
-        
-        .chat-message.system-message .message-content {
-            background: rgba(59, 130, 246, 0.2);
-            border-left: 3px solid #3b82f6;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-style: italic;
-        }
-        
-        .message-content {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 10px 12px;
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-        }
-        
-        .message-content.own-message {
-            background: rgba(16, 185, 129, 0.2);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            margin-left: 20px;
-        }
-        
-        .message-header {
+        .security-indicator {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 4px;
-        }
-        
-        .username {
-            font-weight: 600;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
             color: #10b981;
-            font-size: 0.9rem;
         }
         
-        .message-time {
-            font-size: 0.75rem;
-            color: rgba(255, 255, 255, 0.6);
+        .security-indicator i {
+            font-size: 1rem;
         }
         
-        .message-text {
-            color: rgba(255, 255, 255, 0.9);
-            line-height: 1.4;
-            word-wrap: break-word;
+        .device-info {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
         }
         
-        .system-message .message-text {
-            color: #93c5fd;
+        .device-info .fingerprint {
+            font-family: 'Courier New', monospace;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 5px;
         }
         
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .live-indicator {
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.7;
-            }
-        }
-        
-        .play-button {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80px;
-            height: 80px;
-            background: rgba(16, 185, 129, 0.9);
-            border: none;
-            border-radius: 50%;
-            color: white;
-            font-size: 30px;
-            cursor: pointer;
-            display: none;
-            transition: all 0.3s ease;
-            z-index: 10;
-        }
-        
-        .play-button:hover {
-            background: rgba(16, 185, 129, 1);
-            transform: translate(-50%, -50%) scale(1.1);
-        }
-        
-        /* Mobile optimizations */
         @media (max-width: 768px) {
             .viewer-stats {
                 flex-wrap: wrap;
-                gap: 8px;
+                gap: 10px;
             }
             
             .stat-item {
-                padding: 4px 8px;
                 font-size: 0.8rem;
+                padding: 4px 8px;
             }
             
-            .message-content.own-message {
-                margin-left: 10px;
+            .security-indicator {
+                font-size: 0.8rem;
+                padding: 6px 10px;
             }
         }
     </style>
@@ -182,18 +115,14 @@
 <body>
     <!-- Header -->
     <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <i class="fas fa-play-circle"></i>
-                <span>Private Stream</span>
-            </div>
-            <div class="header-right">
-                <div class="live-badge live-indicator">
-                    <i class="fas fa-circle"></i>
-                    LIVE
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-play-circle"></i>
+                    <span>Private Stream</span>
                 </div>
-                <div id="connectionStatus" class="connection-status disconnected">
-                    Menghubungkan...
+                <div class="header-info">
+                    <div class="connection-status" id="connectionStatus">Menghubungkan...</div>
                 </div>
             </div>
         </div>
@@ -223,7 +152,20 @@
             <!-- Stream Info -->
             <div class="stream-info">
                 <h2 class="stream-title">Live Streaming Session</h2>
-                <p class="stream-description">Streaming pribadi dengan akses terbatas</p>
+                <p class="stream-description">Streaming pribadi dengan akses terbatas dan keamanan enhanced</p>
+                
+                <!-- Security Indicator -->
+                <div class="security-indicator">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Sesi Anda diamankan dengan Advanced Device Fingerprinting</span>
+                </div>
+                
+                <!-- Device Info -->
+                <div class="device-info" id="deviceInfo">
+                    <i class="fas fa-desktop"></i>
+                    <span>Device ID:</span>
+                    <span class="fingerprint" id="deviceFingerprint">Generating...</span>
+                </div>
                 
                 <!-- Real-time Stats -->
                 <div class="viewer-stats">
@@ -242,37 +184,38 @@
                         <span id="streamDuration">00:00</span>
                         <span>Durasi</span>
                     </div>
+                    <div class="stat-item">
+                        <i class="fas fa-shield-alt stat-icon"></i>
+                        <span>Secure</span>
+                        <span>Mode</span>
+                    </div>
                 </div>
             </div>
         </section>
 
         <!-- Chat Section -->
         <section class="chat-section">
-            <div class="chat-header">
-                <h3><i class="fas fa-comments"></i> Live Chat</h3>
-                <div class="chat-status">
-                    <i class="fas fa-circle online-indicator"></i>
-                    <span id="chatUserCount">0</span> online
+            <div class="chat-container">
+                <div class="chat-header">
+                    <h3>Live Chat</h3>
+                    <div class="chat-stats">
+                        <i class="fas fa-users"></i>
+                        <span id="chatUserCount">0</span>
+                    </div>
                 </div>
-            </div>
-            
-            <div id="chatMessages" class="chat-messages">
-                <!-- Messages will be added here dynamically -->
-            </div>
-            
-            <div class="chat-input-container">
-                <input 
-                    type="text" 
-                    id="chatInput" 
-                    class="chat-input" 
-                    placeholder="Ketik pesan Anda..."
-                    maxlength="200"
-                >
-                <button id="sendButton" class="send-button">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-                <div class="input-hint">
-                    Tekan Enter untuk mengirim • Maksimal 200 karakter
+                
+                <div class="chat-messages" id="chatMessages">
+                    <div class="system-message">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Selamat datang di live chat! Berinteraksilah dengan penonton lain.</span>
+                    </div>
+                </div>
+                
+                <div class="chat-input-container">
+                    <input type="text" id="chatInput" placeholder="Ketik pesan Anda..." maxlength="500">
+                    <button id="sendButton">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
                 </div>
             </div>
         </section>
@@ -282,36 +225,48 @@
     <div id="errorModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Terjadi Kesalahan</h3>
+                <h3>
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Terjadi Kesalahan
+                </h3>
+                <button id="closeError" class="close-button">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <div class="modal-body">
                 <p id="errorMessage">Pesan error akan ditampilkan di sini.</p>
             </div>
             <div class="modal-footer">
-                <button id="closeError" class="btn btn-primary">Tutup</button>
+                <button id="closeError" class="btn btn-primary">
+                    <i class="fas fa-check"></i>
+                    OK
+                </button>
             </div>
         </div>
     </div>
 
     <!-- Footer -->
     <footer class="footer">
-        <div class="footer-content">
-            <p>&copy; 2025 Private Streaming Platform. All rights reserved.</p>
-            <div class="footer-links">
-                <a href="#" onclick="window.streamingApp?.disconnect(); window.location.reload();">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </a>
-                <a href="#" onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();">
-                    <i class="fas fa-expand"></i> Fullscreen
-                </a>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-text">
+                    <p>&copy; 2025 Private Stream. Streaming platform dengan keamanan tinggi.</p>
+                    <p class="tech-info">Powered by HLS.js, Socket.IO & Advanced Device Fingerprinting</p>
+                </div>
+                <div class="footer-links">
+                    <a href="#" onclick="window.streamingApp?.disconnect(); window.location.reload();">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </a>
+                    <a href="#" onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();">
+                        <i class="fas fa-expand"></i> Fullscreen
+                    </a>
+                </div>
             </div>
         </div>
     </footer>
 
     <!-- Scripts -->
-    <script src="api.js"></script>
-    <script src="script.js"></script>
+    <script src="script_realtime_fixed.js"></script>
     
     <script>
         // Update stream duration
@@ -338,15 +293,38 @@
             }
         }
         
+        // Display device fingerprint when available
+        function displayDeviceFingerprint(fingerprint) {
+            const deviceFingerprintElement = document.getElementById('deviceFingerprint');
+            if (deviceFingerprintElement && fingerprint) {
+                deviceFingerprintElement.textContent = fingerprint.substring(0, 16) + '...';
+            }
+        }
+        
         // Listen for viewer count updates
         document.addEventListener('DOMContentLoaded', () => {
-            const originalUpdateViewerCount = window.streamingApp?.updateViewerCount;
-            if (originalUpdateViewerCount) {
-                window.streamingApp.updateViewerCount = function(count) {
-                    originalUpdateViewerCount.call(this, count);
-                    updateChatUserCount(count);
-                };
-            }
+            // Hook into the streaming app when it's available
+            const checkStreamingApp = () => {
+                if (window.streamingApp) {
+                    // Hook viewer count updates
+                    const originalUpdateViewerCount = window.streamingApp.updateViewerCount;
+                    if (originalUpdateViewerCount) {
+                        window.streamingApp.updateViewerCount = function(count) {
+                            originalUpdateViewerCount.call(this, count);
+                            updateChatUserCount(count);
+                        };
+                    }
+                    
+                    // Display device fingerprint
+                    window.streamingApp.getDeviceFingerprint().then(fingerprint => {
+                        displayDeviceFingerprint(fingerprint);
+                    });
+                } else {
+                    setTimeout(checkStreamingApp, 100);
+                }
+            };
+            
+            checkStreamingApp();
         });
     </script>
 </body>
