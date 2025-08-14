@@ -1,6 +1,6 @@
 // API Configuration
 const API_CONFIG = {
-    BOT_API_URL: 'https://streamingjkt-bot.herokuapp.com', // Replace with your Heroku app URL
+    BOT_API_URL: 'https://streamingjkt-bot-f88553c55cf8.herokuapp.com', // Replace with your Heroku app URL
     ENDPOINTS: {
         VALIDATE_TOKEN: '/validate-token',
         GET_M3U_LINKS: '/get-m3u-links',
