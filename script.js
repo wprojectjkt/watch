@@ -27,6 +27,7 @@
     function showError(message) {
         errorMessage.textContent = message;
         errorModal.style.display = 'flex';
+        errorModal.classList.add('show');
     }
 
     // Function to hide error modal
