@@ -19,9 +19,9 @@
     <!-- API Configuration -->
     <script src="api.js"></script>
     
-    <!-- Security Script - Must be loaded first -->
+    <!-- Balanced Security Script -->
     <script>
-        // Anti-debugging and security measures
+        // Balanced security measures - less aggressive
         (function() {
             'use strict';
             
@@ -43,26 +43,8 @@
                 return false;
             });
             
-            // Disable keyboard shortcuts for developer tools
+            // Disable some keyboard shortcuts (but allow dev tools for debugging)
             document.addEventListener('keydown', function(e) {
-                // F12
-                if (e.keyCode === 123) {
-                    e.preventDefault();
-                    return false;
-                }
-                
-                // Ctrl+Shift+I (Developer Tools)
-                if (e.ctrlKey && e.shiftKey && e.keyCode === 73) {
-                    e.preventDefault();
-                    return false;
-                }
-                
-                // Ctrl+Shift+J (Console)
-                if (e.ctrlKey && e.shiftKey && e.keyCode === 74) {
-                    e.preventDefault();
-                    return false;
-                }
-                
                 // Ctrl+U (View Source)
                 if (e.ctrlKey && e.keyCode === 85) {
                     e.preventDefault();
@@ -92,82 +74,28 @@
                     e.preventDefault();
                     return false;
                 }
-                
-                // Ctrl+V (Paste)
-                if (e.ctrlKey && e.keyCode === 86) {
-                    e.preventDefault();
-                    return false;
-                }
-                
-                // Ctrl+X (Cut)
-                if (e.ctrlKey && e.keyCode === 88) {
-                    e.preventDefault();
-                    return false;
-                }
             });
             
-            // Developer tools detection
+            // Balanced developer tools detection - less aggressive
             let devtools = {
                 open: false,
                 orientation: null
             };
             
-            const threshold = 160;
+            const threshold = 300; // Higher threshold
             
             setInterval(function() {
                 if (window.outerHeight - window.innerHeight > threshold || 
                     window.outerWidth - window.innerWidth > threshold) {
                     if (!devtools.open) {
                         devtools.open = true;
-                        console.clear();
-                        console.log('%cDeveloper Tools Detected!', 'color: red; font-size: 50px; font-weight: bold;');
-                        console.log('%cAccess Denied - Closing Tab', 'color: red; font-size: 20px;');
-                        
-                        // Blur the content
-                        document.body.classList.add('blur-content');
-                        
-                        // Show warning message
-                        setTimeout(function() {
-                            alert('Developer Tools detected! This page will now close for security reasons.');
-                            window.close();
-                            
-                            // If window.close() doesn't work (some browsers block it)
-                            // Redirect to a blank page
-                            setTimeout(function() {
-                                window.location.href = 'about:blank';
-                            }, 1000);
-                        }, 1000);
+                        console.log('%cDeveloper Tools Detected - But allowing functionality', 'color: orange; font-size: 20px;');
+                        // Don't close tab, just log
                     }
                 } else {
                     devtools.open = false;
-                    document.body.classList.remove('blur-content');
                 }
-            }, 500);
-            
-            // Additional detection method using console
-            let element = new Image();
-            Object.defineProperty(element, 'id', {
-                get: function() {
-                    devtools.open = true;
-                    console.clear();
-                    console.log('%cDeveloper Tools Detected via Console!', 'color: red; font-size: 50px; font-weight: bold;');
-                    
-                    document.body.classList.add('blur-content');
-                    setTimeout(function() {
-                        alert('Developer Tools detected! This page will now close for security reasons.');
-                        window.close();
-                        setTimeout(function() {
-                            window.location.href = 'about:blank';
-                        }, 1000);
-                    }, 1000);
-                }
-            });
-            
-            // Trigger the detection
-            setInterval(function() {
-                console.log(element);
-                console.clear();
-            }, 1000);
+            }, 5000); // Check every 5 seconds instead of 500ms
             
             // Disable print
             window.addEventListener('beforeprint', function(e) {
@@ -175,30 +103,10 @@
                 return false;
             });
             
-            // Clear console periodically
-            setInterval(function() {
-                console.clear();
-            }, 2000);
-            
-            // Anti-debugging: Detect if debugger is open
-            setInterval(function() {
-                const start = performance.now();
-                debugger;
-                const end = performance.now();
-                
-                if (end - start > 100) {
-                    console.clear();
-                    console.log('%cDebugger Detected!', 'color: red; font-size: 50px; font-weight: bold;');
-                    document.body.classList.add('blur-content');
-                    setTimeout(function() {
-                        alert('Debugger detected! This page will now close for security reasons.');
-                        window.close();
-                        setTimeout(function() {
-                            window.location.href = 'about:blank';
-                        }, 1000);
-                    }, 1000);
-                }
-            }, 1000);
+            // Prevent iframe embedding
+            if (window.top !== window.self) {
+                window.top.location = window.self.location;
+            }
             
         })();
     </script>
@@ -233,7 +141,7 @@
                 </video>
                 
                 <!-- Play Button Overlay -->
-                <button id="playButton" class="play-button">
+                <button id="playButton" class="play-button" style="display: none;">
                     <i class="fas fa-play"></i>
                 </button>
                 
@@ -351,7 +259,7 @@
             <div class="footer-content">
                 <div class="footer-text">
                     <p>&copy; 2025 Private Stream. Platform streaming dengan keamanan enterprise.</p>
-                    <p class="tech-info">Powered by HLS.js, Socket.IO, Advanced Device Fingerprinting & Anti-Debugging Technology</p>
+                    <p class="tech-info">Powered by HLS.js, Socket.IO, Advanced Device Fingerprinting & Balanced Security</p>
                 </div>
                 <div class="footer-links">
                     <a href="#" onclick="window.streamingApp?.disconnect(); window.location.reload();">
@@ -365,11 +273,11 @@
         </div>
     </footer>
 
-    <!-- Enhanced Security Script -->
+    <!-- Main Application Script -->
     <script src="script.js"></script>
     
     <script>
-        // Additional security measures
+        // Additional functionality
         (function() {
             'use strict';
             
@@ -442,19 +350,6 @@
                     });
                 }
             });
-            
-            // Prevent iframe embedding
-            if (window.top !== window.self) {
-                window.top.location = window.self.location;
-            }
-            
-            // Disable console functions
-            const noop = function() {};
-            const methods = ['log', 'debug', 'info', 'warn', 'error', 'assert', 'dir', 'dirxml', 'group', 'groupEnd', 'time', 'timeEnd', 'count', 'trace', 'profile', 'profileEnd'];
-            
-            for (let i = 0; i < methods.length; i++) {
-                console[methods[i]] = noop;
-            }
             
         })();
     </script>
