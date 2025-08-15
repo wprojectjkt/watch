@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private Stream - Live Streaming Platform</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Private Stream - Secure Live Streaming Platform</title>
+    <link rel="stylesheet" href="styles_enhanced.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- HLS.js for video streaming -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.10/dist/hls.min.js"></script>
@@ -19,109 +19,204 @@
     <!-- API Configuration -->
     <script src="api.js"></script>
     
-    <style>
-        /* Additional styles for enhanced features */
-        .viewer-stats {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 10px;
-        }
-        
-        .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 5px 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            font-size: 0.9rem;
-        }
-        
-        .stat-icon {
-            width: 16px;
-            height: 16px;
-        }
-        
-        .connection-status {
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-        
-        .connection-status.connected {
-            background: #10b981;
-            color: white;
-        }
-        
-        .connection-status.disconnected {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .security-indicator {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 0.85rem;
-            color: #10b981;
-        }
-        
-        .security-indicator i {
-            font-size: 1rem;
-        }
-        
-        .device-info {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 15px;
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        .device-info .fingerprint {
-            font-family: 'Courier New', monospace;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-left: 5px;
-        }
-        
-        @media (max-width: 768px) {
-            .viewer-stats {
-                flex-wrap: wrap;
-                gap: 10px;
-            }
+    <!-- Security Script - Must be loaded first -->
+    <script>
+        // Anti-debugging and security measures
+        (function() {
+            'use strict';
             
-            .stat-item {
-                font-size: 0.8rem;
-                padding: 4px 8px;
-            }
+            // Disable right-click context menu
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
             
-            .security-indicator {
-                font-size: 0.8rem;
-                padding: 6px 10px;
-            }
-        }
-    </style>
+            // Disable text selection
+            document.addEventListener('selectstart', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            // Disable drag and drop
+            document.addEventListener('dragstart', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            // Disable keyboard shortcuts for developer tools
+            document.addEventListener('keydown', function(e) {
+                // F12
+                if (e.keyCode === 123) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Ctrl+Shift+I (Developer Tools)
+                if (e.ctrlKey && e.shiftKey && e.keyCode === 73) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Ctrl+Shift+J (Console)
+                if (e.ctrlKey && e.shiftKey && e.keyCode === 74) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Ctrl+U (View Source)
+                if (e.ctrlKey && e.keyCode === 85) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Ctrl+S (Save Page)
+                if (e.ctrlKey && e.keyCode === 83) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Ctrl+A (Select All)
+                if (e.ctrlKey && e.keyCode === 65) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Ctrl+P (Print)
+                if (e.ctrlKey && e.keyCode === 80) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Ctrl+C (Copy)
+                if (e.ctrlKey && e.keyCode === 67) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Ctrl+V (Paste)
+                if (e.ctrlKey && e.keyCode === 86) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Ctrl+X (Cut)
+                if (e.ctrlKey && e.keyCode === 88) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+            
+            // Developer tools detection
+            let devtools = {
+                open: false,
+                orientation: null
+            };
+            
+            const threshold = 160;
+            
+            setInterval(function() {
+                if (window.outerHeight - window.innerHeight > threshold || 
+                    window.outerWidth - window.innerWidth > threshold) {
+                    if (!devtools.open) {
+                        devtools.open = true;
+                        console.clear();
+                        console.log('%cDeveloper Tools Detected!', 'color: red; font-size: 50px; font-weight: bold;');
+                        console.log('%cAccess Denied - Closing Tab', 'color: red; font-size: 20px;');
+                        
+                        // Blur the content
+                        document.body.classList.add('blur-content');
+                        
+                        // Show warning message
+                        setTimeout(function() {
+                            alert('Developer Tools detected! This page will now close for security reasons.');
+                            window.close();
+                            
+                            // If window.close() doesn't work (some browsers block it)
+                            // Redirect to a blank page
+                            setTimeout(function() {
+                                window.location.href = 'about:blank';
+                            }, 1000);
+                        }, 1000);
+                    }
+                } else {
+                    devtools.open = false;
+                    document.body.classList.remove('blur-content');
+                }
+            }, 500);
+            
+            // Additional detection method using console
+            let element = new Image();
+            Object.defineProperty(element, 'id', {
+                get: function() {
+                    devtools.open = true;
+                    console.clear();
+                    console.log('%cDeveloper Tools Detected via Console!', 'color: red; font-size: 50px; font-weight: bold;');
+                    
+                    document.body.classList.add('blur-content');
+                    setTimeout(function() {
+                        alert('Developer Tools detected! This page will now close for security reasons.');
+                        window.close();
+                        setTimeout(function() {
+                            window.location.href = 'about:blank';
+                        }, 1000);
+                    }, 1000);
+                }
+            });
+            
+            // Trigger the detection
+            setInterval(function() {
+                console.log(element);
+                console.clear();
+            }, 1000);
+            
+            // Disable print
+            window.addEventListener('beforeprint', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            // Clear console periodically
+            setInterval(function() {
+                console.clear();
+            }, 2000);
+            
+            // Anti-debugging: Detect if debugger is open
+            setInterval(function() {
+                const start = performance.now();
+                debugger;
+                const end = performance.now();
+                
+                if (end - start > 100) {
+                    console.clear();
+                    console.log('%cDebugger Detected!', 'color: red; font-size: 50px; font-weight: bold;');
+                    document.body.classList.add('blur-content');
+                    setTimeout(function() {
+                        alert('Debugger detected! This page will now close for security reasons.');
+                        window.close();
+                        setTimeout(function() {
+                            window.location.href = 'about:blank';
+                        }, 1000);
+                    }, 1000);
+                }
+            }, 1000);
+            
+        })();
+    </script>
 </head>
-<body>
+<body class="no-select">
     <!-- Header -->
     <header class="header">
         <div class="container">
             <div class="header-content">
                 <div class="logo">
-                    <i class="fas fa-play-circle"></i>
+                    <i class="fas fa-shield-alt"></i>
                     <span>Private Stream</span>
                 </div>
                 <div class="header-info">
+                    <div class="live-indicator">
+                        <div class="live-dot"></div>
+                        <span>LIVE</span>
+                    </div>
                     <div class="connection-status" id="connectionStatus">Menghubungkan...</div>
                 </div>
             </div>
@@ -151,18 +246,18 @@
             
             <!-- Stream Info -->
             <div class="stream-info">
-                <h2 class="stream-title">Live Streaming Session</h2>
-                <p class="stream-description">Streaming pribadi dengan akses terbatas dan keamanan enhanced</p>
+                <h1 class="stream-title">Secure Live Streaming</h1>
+                <p class="stream-description">Platform streaming pribadi dengan keamanan tingkat enterprise dan advanced device fingerprinting untuk perlindungan maksimal.</p>
                 
                 <!-- Security Indicator -->
                 <div class="security-indicator">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>Sesi Anda diamankan dengan Advanced Device Fingerprinting</span>
+                    <i class="fas fa-shield-check"></i>
+                    <span>Sesi Anda dilindungi dengan Advanced Security & Device Fingerprinting</span>
                 </div>
                 
                 <!-- Device Info -->
                 <div class="device-info" id="deviceInfo">
-                    <i class="fas fa-desktop"></i>
+                    <i class="fas fa-microchip"></i>
                     <span>Device ID:</span>
                     <span class="fingerprint" id="deviceFingerprint">Generating...</span>
                 </div>
@@ -171,23 +266,23 @@
                 <div class="viewer-stats">
                     <div class="stat-item">
                         <i class="fas fa-users stat-icon"></i>
-                        <span id="viewerCount">0</span>
-                        <span>Penonton</span>
+                        <div class="stat-value" id="viewerCount">0</div>
+                        <div class="stat-label">Penonton</div>
                     </div>
                     <div class="stat-item">
                         <i class="fas fa-signal stat-icon"></i>
-                        <span>HD</span>
-                        <span>Kualitas</span>
+                        <div class="stat-value">HD</div>
+                        <div class="stat-label">Kualitas</div>
                     </div>
                     <div class="stat-item">
                         <i class="fas fa-clock stat-icon"></i>
-                        <span id="streamDuration">00:00</span>
-                        <span>Durasi</span>
+                        <div class="stat-value" id="streamDuration">00:00</div>
+                        <div class="stat-label">Durasi</div>
                     </div>
                     <div class="stat-item">
-                        <i class="fas fa-shield-alt stat-icon"></i>
-                        <span>Secure</span>
-                        <span>Mode</span>
+                        <i class="fas fa-lock stat-icon"></i>
+                        <div class="stat-value">Secure</div>
+                        <div class="stat-label">Mode</div>
                     </div>
                 </div>
             </div>
@@ -197,7 +292,10 @@
         <section class="chat-section">
             <div class="chat-container">
                 <div class="chat-header">
-                    <h3>Live Chat</h3>
+                    <h3>
+                        <i class="fas fa-comments"></i>
+                        Live Chat
+                    </h3>
                     <div class="chat-stats">
                         <i class="fas fa-users"></i>
                         <span id="chatUserCount">0</span>
@@ -207,15 +305,17 @@
                 <div class="chat-messages" id="chatMessages">
                     <div class="system-message">
                         <i class="fas fa-info-circle"></i>
-                        <span>Selamat datang di live chat! Berinteraksilah dengan penonton lain.</span>
+                        <span>Selamat datang di live chat yang aman! Berinteraksilah dengan penonton lain.</span>
                     </div>
                 </div>
                 
                 <div class="chat-input-container">
-                    <input type="text" id="chatInput" placeholder="Ketik pesan Anda..." maxlength="500">
-                    <button id="sendButton">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                    <div class="chat-input-wrapper">
+                        <input type="text" id="chatInput" placeholder="Ketik pesan Anda..." maxlength="500">
+                        <button id="sendButton">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>
@@ -227,7 +327,7 @@
             <div class="modal-header">
                 <h3>
                     <i class="fas fa-exclamation-triangle"></i>
-                    Terjadi Kesalahan
+                    Akses Ditolak
                 </h3>
                 <button id="closeError" class="close-button">
                     <i class="fas fa-times"></i>
@@ -237,9 +337,9 @@
                 <p id="errorMessage">Pesan error akan ditampilkan di sini.</p>
             </div>
             <div class="modal-footer">
-                <button id="closeError" class="btn btn-primary">
+                <button id="closeErrorBtn" class="btn btn-primary">
                     <i class="fas fa-check"></i>
-                    OK
+                    Mengerti
                 </button>
             </div>
         </div>
@@ -250,8 +350,8 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-text">
-                    <p>&copy; 2025 Private Stream. Streaming platform dengan keamanan tinggi.</p>
-                    <p class="tech-info">Powered by HLS.js, Socket.IO & Advanced Device Fingerprinting</p>
+                    <p>&copy; 2025 Private Stream. Platform streaming dengan keamanan enterprise.</p>
+                    <p class="tech-info">Powered by HLS.js, Socket.IO, Advanced Device Fingerprinting & Anti-Debugging Technology</p>
                 </div>
                 <div class="footer-links">
                     <a href="#" onclick="window.streamingApp?.disconnect(); window.location.reload();">
@@ -265,67 +365,98 @@
         </div>
     </footer>
 
-    <!-- Scripts -->
-    <script src="script.js"></script>
+    <!-- Enhanced Security Script -->
+    <script src="script_secure.js"></script>
     
     <script>
-        // Update stream duration
-        function updateStreamDuration() {
-            const durationElement = document.getElementById('streamDuration');
-            if (durationElement) {
-                const video = document.getElementById('videoPlayer');
-                if (video && !isNaN(video.currentTime)) {
-                    const minutes = Math.floor(video.currentTime / 60);
-                    const seconds = Math.floor(video.currentTime % 60);
-                    durationElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                }
-            }
-        }
-        
-        // Update duration every second
-        setInterval(updateStreamDuration, 1000);
-        
-        // Update chat user count with viewer count
-        function updateChatUserCount(count) {
-            const chatUserCountElement = document.getElementById('chatUserCount');
-            if (chatUserCountElement) {
-                chatUserCountElement.textContent = count;
-            }
-        }
-        
-        // Display device fingerprint when available
-        function displayDeviceFingerprint(fingerprint) {
-            const deviceFingerprintElement = document.getElementById('deviceFingerprint');
-            if (deviceFingerprintElement && fingerprint) {
-                deviceFingerprintElement.textContent = fingerprint.substring(0, 16) + '...';
-            }
-        }
-        
-        // Listen for viewer count updates
-        document.addEventListener('DOMContentLoaded', () => {
-            // Hook into the streaming app when it's available
-            const checkStreamingApp = () => {
-                if (window.streamingApp) {
-                    // Hook viewer count updates
-                    const originalUpdateViewerCount = window.streamingApp.updateViewerCount;
-                    if (originalUpdateViewerCount) {
-                        window.streamingApp.updateViewerCount = function(count) {
-                            originalUpdateViewerCount.call(this, count);
-                            updateChatUserCount(count);
-                        };
-                    }
-                    
-                    // Display device fingerprint
-                    window.streamingApp.getDeviceFingerprint().then(fingerprint => {
-                        displayDeviceFingerprint(fingerprint);
-                    });
-                } else {
-                    setTimeout(checkStreamingApp, 100);
-                }
-            };
+        // Additional security measures
+        (function() {
+            'use strict';
             
-            checkStreamingApp();
-        });
+            // Update stream duration
+            function updateStreamDuration() {
+                const durationElement = document.getElementById('streamDuration');
+                if (durationElement) {
+                    const video = document.getElementById('videoPlayer');
+                    if (video && !isNaN(video.currentTime)) {
+                        const minutes = Math.floor(video.currentTime / 60);
+                        const seconds = Math.floor(video.currentTime % 60);
+                        durationElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                }
+            }
+            
+            // Update duration every second
+            setInterval(updateStreamDuration, 1000);
+            
+            // Update chat user count with viewer count
+            function updateChatUserCount(count) {
+                const chatUserCountElement = document.getElementById('chatUserCount');
+                if (chatUserCountElement) {
+                    chatUserCountElement.textContent = count;
+                }
+            }
+            
+            // Display device fingerprint when available
+            function displayDeviceFingerprint(fingerprint) {
+                const deviceFingerprintElement = document.getElementById('deviceFingerprint');
+                if (deviceFingerprintElement && fingerprint) {
+                    deviceFingerprintElement.textContent = fingerprint.substring(0, 16) + '...';
+                }
+            }
+            
+            // Listen for viewer count updates
+            document.addEventListener('DOMContentLoaded', () => {
+                // Hook into the streaming app when it's available
+                const checkStreamingApp = () => {
+                    if (window.streamingApp) {
+                        // Hook viewer count updates
+                        const originalUpdateViewerCount = window.streamingApp.updateViewerCount;
+                        if (originalUpdateViewerCount) {
+                            window.streamingApp.updateViewerCount = function(count) {
+                                originalUpdateViewerCount.call(this, count);
+                                updateChatUserCount(count);
+                            };
+                        }
+                        
+                        // Display device fingerprint
+                        window.streamingApp.getDeviceFingerprint().then(fingerprint => {
+                            displayDeviceFingerprint(fingerprint);
+                        });
+                    } else {
+                        setTimeout(checkStreamingApp, 100);
+                    }
+                };
+                
+                checkStreamingApp();
+                
+                // Additional error modal close handler
+                const closeErrorBtn = document.getElementById('closeErrorBtn');
+                if (closeErrorBtn) {
+                    closeErrorBtn.addEventListener('click', () => {
+                        const errorModal = document.getElementById('errorModal');
+                        if (errorModal) {
+                            errorModal.style.display = 'none';
+                            errorModal.classList.remove('show');
+                        }
+                    });
+                }
+            });
+            
+            // Prevent iframe embedding
+            if (window.top !== window.self) {
+                window.top.location = window.self.location;
+            }
+            
+            // Disable console functions
+            const noop = function() {};
+            const methods = ['log', 'debug', 'info', 'warn', 'error', 'assert', 'dir', 'dirxml', 'group', 'groupEnd', 'time', 'timeEnd', 'count', 'trace', 'profile', 'profileEnd'];
+            
+            for (let i = 0; i < methods.length; i++) {
+                console[methods[i]] = noop;
+            }
+            
+        })();
     </script>
 </body>
 </html>
