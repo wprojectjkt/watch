@@ -219,7 +219,8 @@
             console.log('Token validation response:', data);
             
             if (!data.valid) {
-                throw new Error(data.message || 'Token tidak valid');
+                // Use data.error if available, otherwise fallback to data.message or a generic message
+                throw new Error(data.error || data.message || 'Token tidak valid');
             }
             
             return data;
@@ -527,8 +528,8 @@
             
         } catch (error) {
             console.error('Initialization error:', error);
-            hideLoading();
             showError(error.message || 'Gagal menginisialisasi aplikasi');
+            hideLoading();
         }
     }
 
