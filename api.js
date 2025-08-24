@@ -1,6 +1,6 @@
 // API Configuration
 const API_CONFIG = {
-    BOT_API_URL: 'https://streamingjkt-bot-f88553c55cf8.herokuapp.com', // Replace with your Heroku app URL
+    BOT_API_URL: 'https://bot.wproject.web.id', // Updated to use your new domain
     ENDPOINTS: {
         VALIDATE_TOKEN: '/validate-token',
         GET_M3U_LINKS: '/get-m3u-links',
@@ -339,4 +339,3 @@ window.IPDetector = IPDetector;
 window.TokenStorage = TokenStorage;
 window.NetworkMonitor = NetworkMonitor;
 window.ErrorHandler = ErrorHandler;
-
